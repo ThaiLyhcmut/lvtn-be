@@ -1,0 +1,144 @@
+syntax = "proto3";
+
+package common;
+
+option go_package = "github.com/common";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/wrappers.proto";
+
+// Service định nghĩa các phương thức CRUD linh hoạt
+service CommonService {
+  rpc Create(GenericRequest) returns (GenericResponse);
+  rpc CreateMany(BatchRequest) returns (BatchResponse);
+  rpc GetById(GetByIdRequest) returns (GenericResponse);
+  rpc Query(QueryRequest) returns (QueryResponse);
+  rpc Update(UpdateRequest) returns (GenericResponse);
+  rpc Delete(DeleteRequest) returns (DeleteResponse);
+  rpc DeleteMany(DeleteManyRequest) returns (DeleteManyResponse);
+  rpc Aggregate(AggregateRequest) returns (AggregateResponse);
+}
+
+// Yêu cầu chung khi tạo entity
+message GenericRequest {
+  string entity_type = 1;
+  google.protobuf.Struct data = 2;
+  google.protobuf.Struct meta = 99;
+}
+
+// Phản hồi chung khi trả về 1 entity
+message GenericResponse {
+  bool success = 1;
+  string message = 2;
+  google.protobuf.StringValue id = 3;
+  google.protobuf.Struct entity = 4;
+  google.protobuf.Timestamp timestamp = 5;
+}
+
+// Tạo nhiều entity
+message BatchRequest {
+  string entity_type = 1;
+  repeated google.protobuf.Struct entities = 2;
+  bool ordered = 3;
+  google.protobuf.Struct meta = 99;
+}
+
+message BatchResponse {
+  bool success = 1;
+  string message = 2;
+  repeated string ids = 3;
+  int32 created_count = 4;
+  repeated ErrorDetail errors = 5;
+  repeated google.protobuf.Struct entities = 6;
+}
+
+message GetByIdRequest {
+  string entity_type = 1;
+  string id = 2;
+  repeated string fields = 3;
+  google.protobuf.Struct meta = 99;
+}
+
+// Truy vấn linh hoạt: thay thế GetList & Search
+message QueryRequest {
+  string entity_type = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+  string query = 4;
+  repeated string search_fields = 5;
+  map<string, google.protobuf.Value> filters = 6;
+  repeated string fields = 7;
+  repeated google.protobuf.Struct pipeline = 8;
+  google.protobuf.Struct meta = 99;
+}
+
+message QueryResponse {
+  bool success = 1;
+  string message = 2;
+  repeated google.protobuf.Struct entities = 3;
+  Pagination pagination = 4;
+  int64 execution_time_ms = 5;
+}
+
+message Pagination {
+  int32 current_page = 1;
+  int32 page_size = 2;
+  int32 total_pages = 3;
+  int64 total_items = 4;
+}
+
+message UpdateRequest {
+  string entity_type = 1;
+  string id = 2;
+  google.protobuf.Struct data = 3;
+  bool partial_update = 4;
+  google.protobuf.Struct meta = 99;
+}
+
+message DeleteRequest {
+  string entity_type = 1;
+  string id = 2;
+  google.protobuf.Struct meta = 99;
+}
+
+message DeleteResponse {
+  bool success = 1;
+  string message = 2;
+  int32 deleted_count = 3;
+}
+
+message DeleteManyRequest {
+  string entity_type = 1;
+  repeated string ids = 2;
+  repeated google.protobuf.Struct pipeline = 3;
+  google.protobuf.Struct meta = 99;
+}
+
+message DeleteManyResponse {
+  bool success = 1;
+  string message = 2;
+  int32 deleted_count = 3;
+  repeated string failed_ids = 4;
+}
+
+message AggregateRequest {
+  string entity_type = 1;
+  repeated google.protobuf.Struct pipeline = 2;
+  bool allow_disk_use = 3;
+  int32 max_time_ms = 4;
+  google.protobuf.Struct meta = 99;
+}
+
+message AggregateResponse {
+  bool success = 1;
+  string message = 2;
+  repeated google.protobuf.Struct results = 3;
+  int64 execution_time_ms = 4;
+}
+
+message ErrorDetail {
+  string code = 1;
+  string field = 2;
+  string message = 3;
+}

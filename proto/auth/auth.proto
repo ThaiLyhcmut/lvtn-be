@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package auth;
+
+option go_package = "github.com//auth";
+
+// Service định nghĩa các phương thức xác thực
+service AuthService {
+  // Đăng nhập bằng tài khoản và mật khẩu
+  rpc Login(LoginRequest) returns (LoginResponse);
+  
+  // Đăng nhập bằng Google
+  rpc GoogleLogin(GoogleLoginRequest) returns (LoginResponse);
+  
+  // Đăng xuất
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+  
+  // Làm mới token
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+
+}
+
+// Request cho đăng nhập thường
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+// Request cho đăng nhập Google
+message GoogleLoginRequest {
+  string id_token = 1;  // ID token từ Google OAuth
+}
+
+// Response chung cho đăng nhập
+message LoginResponse {
+  bool success = 1;
+  string message = 2;
+  string access_token = 3;
+  string refresh_token = 4;
+  User user = 5;
+}
+
+// Thông tin người dùng
+message User {
+  string id = 1;
+  string username = 2;
+  string email = 3;
+  string full_name = 4;
+  string roles = 5;  // Danh sách vai trò của người dùng
+  string avatar_url = 6;
+  int64 created_at = 7;
+  int64 updated_at = 8;
+}
+
+// Request đăng xuất
+message LogoutRequest {
+  string access_token = 1;
+}
+
+// Response đăng xuất
+message LogoutResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Request làm mới token
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+// Response làm mới token
+message RefreshTokenResponse {
+  bool success = 1;
+  string message = 2;
+  string access_token = 3;
+  string refresh_token = 4;
+}

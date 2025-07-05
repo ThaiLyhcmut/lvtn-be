@@ -185,77 +185,109 @@ func (m *MongoDBAdapter) GetById(ctx context.Context, _collection string, _id pr
 	}, nil
 }
 
-func (m *MongoDBAdapter) Query(ctx context.Context, _collection string, pipeline bson.A, projection bson.M, page int32, pagesize int32) (*pb.QueryResponse, error) {
+func (m *MongoDBAdapter) Query(ctx context.Context, _collection string, pipeline bson.A, projection bson.M, page int32, pagesize int32, pipelineCount bson.A) (*pb.QueryResponse, error) {
 	collection := m.database.Collection(_collection)
-
-	countPipeline := append(pipeline, bson.M{"$count": "total"})
-
-	countCursor, err := collection.Aggregate(ctx, countPipeline)
-	if err != nil {
-		return &pb.QueryResponse{
-			Success: false,
-			Message: fmt.Sprintf("failed to count entities: %v", err),
-		}, nil
+	type countResult struct {
+		total int64
+		err   error
 	}
-	defer countCursor.Close(ctx)
-
-	var countResult []bson.M
-	if err := countCursor.All(ctx, &countResult); err != nil {
-		return &pb.QueryResponse{
-			Success: false,
-			Message: fmt.Sprintf("failed to get count: %v", err),
-		}, nil
+	type dataResult struct {
+		results []bson.M
+		err     error
 	}
 
-	totalItems := int64(0)
-	if len(countResult) > 0 {
-		if total, ok := countResult[0]["total"].(int32); ok {
-			totalItems = int64(total)
-		} else if total, ok := countResult[0]["total"].(int64); ok {
-			totalItems = total
+	countChan := make(chan countResult, 1)
+	dataChan := make(chan dataResult, 1)
+
+	// Goroutine cho count query
+	go func() {
+		countPipeline := append(pipelineCount, bson.M{"$count": "total"})
+		countCursor, err := collection.Aggregate(ctx, countPipeline)
+		if err != nil {
+			countChan <- countResult{err: err}
+			return
 		}
-	}
+		defer countCursor.Close(ctx)
 
-	if page > 0 && pagesize > 0 {
-		skip := (page - 1) * pagesize
-		pipeline = append(pipeline, bson.M{"$skip": skip})
-		pipeline = append(pipeline, bson.M{"$limit": pagesize})
-	}
+		var countResults []bson.M
+		if err := countCursor.All(ctx, &countResults); err != nil {
+			countChan <- countResult{err: err}
+			return
+		}
 
-	if len(projection) > 0 {
-		pipeline = append(pipeline, bson.M{"$project": projection})
-	}
+		totalItems := int64(0)
+		if len(countResults) > 0 {
+			if total, ok := countResults[0]["total"].(int32); ok {
+				totalItems = int64(total)
+			} else if total, ok := countResults[0]["total"].(int64); ok {
+				totalItems = total
+			}
+		}
 
-	startTime := time.Now()
-	cursor, err := collection.Aggregate(ctx, pipeline)
-	if err != nil {
+		countChan <- countResult{total: totalItems}
+	}()
+
+	// Goroutine cho data query
+	go func() {
+		// Add pagination
+		if page > 0 && pagesize > 0 {
+			skip := (page - 1) * pagesize
+			pipeline = append(pipeline, bson.M{"$skip": skip})
+			pipeline = append(pipeline, bson.M{"$limit": pagesize})
+		}
+
+		// Add projection
+		if len(projection) > 0 {
+			pipeline = append(pipeline, bson.M{"$project": projection})
+		}
+
+		cursor, err := collection.Aggregate(ctx, pipeline)
+		if err != nil {
+			dataChan <- dataResult{err: err}
+			return
+		}
+		defer cursor.Close(ctx)
+
+		var results []bson.M
+		if err := cursor.All(ctx, &results); err != nil {
+			dataChan <- dataResult{err: err}
+			return
+		}
+
+		dataChan <- dataResult{results: results}
+	}()
+
+	// Đợi cả 2 kết quả
+	countRes := <-countChan
+	dataRes := <-dataChan
+
+	// Xử lý lỗi
+	if countRes.err != nil {
 		return &pb.QueryResponse{
 			Success: false,
-			Message: fmt.Sprintf("failed to query entities: %v", err),
+			Message: fmt.Sprintf("failed to count entities: %v", countRes.err),
 		}, nil
 	}
-	defer cursor.Close(ctx)
 
-	var results []bson.M
-	if err := cursor.All(ctx, &results); err != nil {
+	if dataRes.err != nil {
 		return &pb.QueryResponse{
 			Success: false,
-			Message: fmt.Sprintf("failed to decode results: %v", err),
+			Message: fmt.Sprintf("failed to query entities: %v", dataRes.err),
 		}, nil
 	}
 
-	entities := make([]*structpb.Struct, len(results))
-	for i, result := range results {
+	// Convert results
+	entities := make([]*structpb.Struct, len(dataRes.results))
+	for i, result := range dataRes.results {
 		if entityStruct, err := helper.DocToStruct(result); err == nil {
 			entities[i] = entityStruct
 		}
 	}
 
-	executionTime := time.Since(startTime).Milliseconds()
-
+	// Calculate pagination
 	totalPages := int32(0)
 	if pagesize > 0 {
-		totalPages = int32((totalItems + int64(pagesize) - 1) / int64(pagesize))
+		totalPages = int32((countRes.total + int64(pagesize) - 1) / int64(pagesize))
 	}
 
 	return &pb.QueryResponse{
@@ -266,9 +298,8 @@ func (m *MongoDBAdapter) Query(ctx context.Context, _collection string, pipeline
 			CurrentPage: page,
 			PageSize:    pagesize,
 			TotalPages:  totalPages,
-			TotalItems:  totalItems,
+			TotalItems:  countRes.total,
 		},
-		ExecutionTimeMs: executionTime,
 	}, nil
 }
 

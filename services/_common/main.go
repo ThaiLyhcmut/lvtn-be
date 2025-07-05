@@ -8,7 +8,7 @@ import (
 	"os"
 
 	pb "thaily/proto/common"
-	common "thaily/services/_common/utils"
+	resolver "thaily/services/_common/resolvers"
 	"thaily/services/adapter"
 
 	"google.golang.org/grpc"
@@ -34,7 +34,7 @@ func main() {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 	grpcServer := grpc.NewServer()
-	service := common.NewCommonService(mongoAdapter)
+	service := resolver.NewCommonService(mongoAdapter)
 	pb.RegisterCommonServiceServer(grpcServer, service)
 
 	reflection.Register(grpcServer)

@@ -191,7 +191,6 @@ func (m *MongoDBAdapter) Query(ctx context.Context, _collection string, pipeline
 	countPipeline := append(pipeline, bson.M{"$count": "total"})
 
 	countCursor, err := collection.Aggregate(ctx, countPipeline)
-	fmt.Print("pipeline", pipeline)
 	if err != nil {
 		return &pb.QueryResponse{
 			Success: false,

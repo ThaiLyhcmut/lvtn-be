@@ -1,7 +1,6 @@
 package helper
 
 import (
-	"fmt"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"

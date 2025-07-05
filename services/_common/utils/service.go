@@ -40,8 +40,9 @@ func (s *CommonService) Create(ctx context.Context, req *pb.GenericRequest) (*pb
 	}
 
 	doc := helper.StructToDoc(req.Data)
-	doc["created_at"] = time.Now()
-	doc["updated_at"] = time.Now()
+	now := time.Now()
+	doc["createdAt"] = now
+	doc["updatedAt"] = now
 
 	return s.adapter.Create(ctx, req.EntityType, doc)
 }
@@ -64,8 +65,9 @@ func (s *CommonService) CreateMany(ctx context.Context, req *pb.BatchRequest) (*
 	docs := make([]interface{}, len(req.Entities))
 	for i, entity := range req.Entities {
 		doc := helper.StructToDoc(entity)
-		doc["created_at"] = time.Now()
-		doc["updated_at"] = time.Now()
+		now := time.Now()
+		doc["createdAt"] = now
+		doc["updatedAt"] = now
 		docs[i] = doc
 	}
 
@@ -190,14 +192,13 @@ func (s *CommonService) Update(ctx context.Context, req *pb.UpdateRequest) (*pb.
 	}
 
 	updateDoc := helper.StructToDoc(req.Data)
-	updateDoc["updated_at"] = time.Now()
+	updateDoc["updatedAt"] = time.Now()
 
 	var update bson.M
 	if req.PartialUpdate {
 		update = bson.M{"$set": updateDoc}
 	} else {
 		delete(updateDoc, "_id")
-		updateDoc["updated_at"] = time.Now()
 		update = bson.M{"$set": updateDoc}
 	}
 

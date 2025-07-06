@@ -185,6 +185,45 @@ func (m *MongoDBAdapter) GetById(ctx context.Context, _collection string, _id pr
 	}, nil
 }
 
+func (m *MongoDBAdapter) FindOne(ctx context.Context, _collection string, conditions bson.M, projection bson.M) (*pb.GenericResponse, error) {
+	collection := m.database.Collection(_collection)
+
+	opts := options.FindOne()
+	if len(projection) > 0 {
+		opts.SetProjection(projection)
+	}
+	var entity bson.M
+	err := collection.FindOne(ctx, conditions, opts).Decode(&entity)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return &pb.GenericResponse{
+				Success: false,
+				Message: "Entity not found",
+			}, nil
+		}
+		return &pb.GenericResponse{
+			Success: false,
+			Message: fmt.Sprintf("failed to get entity: %v", err),
+		}, nil
+	}
+
+	entityStruct, err := helper.DocToStruct(entity)
+	if err != nil {
+		return &pb.GenericResponse{
+			Success: false,
+			Message: fmt.Sprintf("failed to convert entity: %v", err),
+		}, nil
+	}
+
+	return &pb.GenericResponse{
+		Success:   true,
+		Message:   "Entity retrieved successfully",
+		Id:        wrapperspb.String(entity["_id"].(primitive.ObjectID).Hex()),
+		Entity:    entityStruct,
+		Timestamp: timestamppb.Now(),
+	}, nil
+}
+
 func (m *MongoDBAdapter) Query(ctx context.Context, _collection string, pipeline bson.A, projection bson.M, page int32, pagesize int32, pipelineCount bson.A) (*pb.QueryResponse, error) {
 	collection := m.database.Collection(_collection)
 	type countResult struct {

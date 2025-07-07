@@ -1,0 +1,18 @@
+{
+  "name": "mongodb-data-generator",
+  "version": "1.0.0",
+  "description": "MongoDB data generator for thesis management system",
+  "main": "index.js",
+  "scripts": {
+    "generate": "node scripts/generate-data.js",
+    "import": "node scripts/import-data.js",
+    "clean": "rm -rf data/*.json"
+  },
+  "dependencies": {
+    "mongodb": "^6.3.0",
+    "faker": "^5.5.3",
+    "bson": "^6.2.0",
+    "commander": "^11.1.0",
+    "chalk": "^4.1.2"
+  }
+}

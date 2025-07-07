@@ -1,2 +1,4 @@
 ./note.txt
-./src/env
+src/
+mongodb-data-generator/data
+mongodb-data-generator/node_modules

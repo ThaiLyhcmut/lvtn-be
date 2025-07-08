@@ -40,17 +40,27 @@ message LoginResponse {
   User user = 5;
 }
 
+message roles {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  repeated string permission = 4;
+  string created_at = 5;
+}
+
 // Thông tin người dùng
 message User {
   string id = 1;
   string code = 2;
   string email = 3;
   string full_name = 4;
-  string roles = 5;  // Danh sách vai trò của người dùng
-  string permision = 6;
-  string avatar_url = 7;
-  int64 created_at = 8;
-  int64 updated_at = 9;
+  string phone = 5;
+  roles role = 6;  // Danh sách vai trò của người dùng
+  string major = 7;
+  string status = 8;
+  string avatar_url = 9;
+  string created_at = 10;
+  string updated_at = 11;
 }
 
 // Request đăng xuất
@@ -75,4 +85,4 @@ message RefreshTokenResponse {
   string message = 2;
   string access_token = 3;
   string refresh_token = 4;
-}
+}   

@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package asynq;
+
+option go_package = "github.com/yourusername/asynq/pb";
+
+import "google/protobuf/struct.proto";
+
+// Service definition for async queue management
+service AsyncQueueService {
+  // Execute workflow
+  rpc ExecuteWorkflow(ExecuteWorkflowRequest) returns (ExecuteWorkflowResponse);
+}
+
+// Generic input message for flexible data
+message DynamicInput {
+  map<string, google.protobuf.Value> fields = 1;
+}
+
+// Workflow execution request
+message ExecuteWorkflowRequest {
+  string workflow_id = 1;
+  DynamicInput input = 2;
+  map<string, string> context = 3;
+}
+
+// Workflow execution response
+message ExecuteWorkflowResponse {
+  string execution_id = 1;
+  string workflow_id = 2;
+  string status = 3;
+  string message = 4;
+}
